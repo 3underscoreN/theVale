@@ -242,3 +242,43 @@ testwithdb('Reply count increases when a reply is added to silent echoes', async
   /* Clean up the database */
   await db.cleanupById(parentid, 'silent');
 });
+
+testwithdb('Reply is visible when added to silent echoes', async ({ page, db }) => {
+  /* Test data */
+  const echoData = {
+    name: `E2E Test reply (comment) ${Math.floor(Math.random() * 1000)}`,
+    content: `This is a test echo for silent echoes reply (comment): ${Math.floor(Math.random() * 1000)}`,
+  };
+
+  const replyData = {
+    name: `E2E Test reply (comment) ${Math.floor(Math.random() * 1000)}`,
+    content: `This is a test reply (comment) for silent echoes: ${Math.floor(Math.random() * 1000)}`,
+  };
+
+  /* Insert and approve the echo in the database, whilst getting the ID */
+  const parentresult = await db.insertAndApprove(echoData.name, echoData.content, 'silent');
+  const parentid = parentresult[0].id;
+
+  /* Insert and approve the reply in the database */
+  await db.insertReplyAndChangeToApprove(replyData.name, replyData.content, parentid, 'silent');
+
+  /* Navigate to silent echoes page */
+  await page.goto(`${process.env.BASE_URL ?? ''}/viewsilent`);
+
+  /* Wait for the page to load */
+  await page.waitForLoadState('networkidle');
+
+  /* Navigate to the echo's replies */
+  const replyButton = await page.getByTestId(`reply-view-${parentid}`);
+  await replyButton.click();
+
+  /* Wait for the replies to load */
+  await page.waitForLoadState('networkidle');
+
+  /* Check if the reply is displayed */
+  const replyElement = await page.getByText(replyData.content);
+  expect(replyElement).toBeTruthy();
+
+  /* Clean up the database */
+  await db.cleanupById(parentid, 'silent');
+});
